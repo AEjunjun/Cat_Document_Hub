@@ -190,7 +190,7 @@ GPLv3.0 是一款强Copyleft协议，核心要求：
 GNU GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 
-Copyright (C) 2024 AEjunjun
+Copyright (C) 2026 AEjunjun
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
