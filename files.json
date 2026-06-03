@@ -4,5 +4,11 @@
         "path":  "Academic/CheShi.md",
         "category":  "Academic",
         "size":  614
+    },
+     {
+        "name":  "I.md",
+        "path":  "Game_Information/i.md",
+        "category":  "Game_Information",
+        "size":  255
     }
 ]
