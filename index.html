@@ -1,0 +1,1738 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 文档库</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        /* ===== CSS 自定义属性注册（让变量支持动画插值） ===== */
+        :root {
+            --bg: #f0f2f5;
+            --glass: rgba(255,255,255,0.75);
+            --glass-border: rgba(255,255,255,0.6);
+            --text: #1a1a2e;
+            --text-2: #6b7280;
+            --text-3: #9ca3af;
+            --accent: #4a6cf7;
+            --accent-light: #eef1ff;
+            --hover: rgba(74,108,247,0.04);
+            --border: #f0f1f3;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+            --radius: 16px;
+            --radius-s: 10px;
+            --ease: 0.2s cubic-bezier(0.4,0,0.2,1);
+            --input-bg: rgba(255,255,255,0.7);
+            --input-border: #e5e7eb;
+            --input-focus-bg: #fff;
+            --surf-1: #f3f4f6;
+            --surf-2: #fff;
+            --surf-3: #f8fafc;
+        }
+        [data-theme="dark"] {
+            --bg: #111118;
+            --glass: rgba(22,22,44,0.88);
+            --glass-border: rgba(255,255,255,0.08);
+            --text: #e5e5f2;
+            --text-2: #aaaac0;
+            --text-3: #787898;
+            --accent: #99aaff;
+            --accent-light: rgba(139,156,255,0.12);
+            --hover: rgba(139,156,255,0.08);
+            --border: #262644;
+            --shadow: 0 4px 32px rgba(0,0,0,0.5);
+            --input-bg: rgba(26,26,52,0.85);
+            --input-border: #363658;
+            --input-focus-bg: rgba(26,26,52,0.95);
+            --surf-1: #1e1e3c;
+            --surf-2: #242446;
+            --surf-3: #202042;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        /* 主题过渡（页面就绪后启用，避免首次加载动画）
+           不含 !important，不影响元素自身 transition（hover 位移等） */
+        .theme-ready,
+        .theme-ready *,
+        .theme-ready *::before,
+        .theme-ready *::after {
+            transition: background-color 0.18s ease,
+                        color 0.15s ease,
+                        border-color 0.18s ease,
+                        box-shadow 0.18s ease;
+        }
+
+        /* ===== 动画关键帧 ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-16px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(16px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.92); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes softPulse {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.03); }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: var(--bg);
+            min-height: 100vh; box-sizing: border-box;
+            color: var(--text);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 14px 16px;
+        }
+
+        body::before {
+            content:''; position:fixed; top:-20%; right:-10%;
+            width:560px; height:560px;
+            background: radial-gradient(circle, var(--accent-light) 0%, transparent 65%);
+            border-radius:50%; pointer-events:none; z-index:0;
+        }
+        body::after {
+            content:''; position:fixed; bottom:-20%; left:-10%;
+            width:480px; height:480px;
+            background: radial-gradient(circle, var(--accent-light) 0%, transparent 65%);
+            border-radius:50%; pointer-events:none; z-index:0;
+        }
+
+        [data-theme="dark"] body::before,
+        [data-theme="dark"] body::after {
+            opacity: 0.35;
+        }
+
+        .app {
+            position:relative; z-index:1; width:100%; max-width:1600px;
+            display:flex; flex-direction:column; gap:20px;
+            min-height: calc(100vh - 48px);
+        }
+
+        /* ---- SVG icon base ---- */
+        .svg-icon { display:inline-block; vertical-align:middle; flex-shrink:0; }
+        .svg-icon.sm  { width:16px; height:16px; }
+        .svg-icon.md  { width:20px; height:20px; }
+        .svg-icon.lg  { width:24px; height:24px; }
+        .svg-icon.xl  { width:48px; height:48px; }
+        .svg-icon.xxl { width:56px; height:56px; }
+        .svg-icon.c-accent { color:var(--accent); }
+
+        /* ===== 顶部导航栏 ===== */
+        .navbar {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 0 28px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            height: 56px;
+            gap: 4px;
+            animation: fadeInUp 0.5s ease both;
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 8px;
+            flex-shrink: 0; margin-right: 12px;
+            text-decoration: none; color: var(--text);
+        }
+        .nav-logo .logo-text {
+            font-size: 16px; font-weight: 700; color: var(--text);
+            white-space: nowrap;
+        }
+
+        .nav-links {
+            display: flex; align-items: center; gap: 2px;
+            flex-shrink: 0;
+        }
+        .nav-link {
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 14px;
+            border-radius: var(--radius-s);
+            font-size: 14.5px; font-weight: 500;
+            color: var(--text-2);
+            text-decoration: none;
+            transition: var(--ease);
+            white-space: nowrap;
+        }
+        .nav-link:hover {
+            background: var(--hover); color: var(--text);
+        }
+        .nav-link.active {
+            background: var(--accent-light); color: var(--accent);
+            font-weight: 600;
+        }
+        .nav-link .svg-icon { color:inherit; opacity:0.7; }
+        .nav-link.active .svg-icon { opacity:1; }
+
+        .nav-spacer { flex:1; min-width:20px; }
+
+        .nav-search {
+            position: relative; flex-shrink: 0;
+        }
+        .nav-search .ico {
+            position:absolute; left:10px; top:50%; transform:translateY(-50%);
+            pointer-events:none; color:var(--text-3);
+        }
+        .nav-search input {
+            width: 180px; padding: 7px 12px 7px 32px;
+            border: 1.5px solid var(--input-border); border-radius: var(--radius-s);
+            font-size: 14px; font-family: inherit;
+            background: var(--input-bg); color: var(--text);
+            outline:none; transition: var(--ease);
+        }
+        .nav-search input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: var(--input-focus-bg); width:220px;
+        }
+        .nav-search input::placeholder { color:var(--text-3); font-size:13px; }
+
+        /* 仪表盘切换按钮（仅移动端显示） */
+        .nav-dash-btn {
+            display: none; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 8px; border: none;
+            background: var(--surf-1); color: var(--text-3);
+            cursor: pointer; flex-shrink: 0; transition: var(--ease);
+            font-family: inherit;
+        }
+        .nav-dash-btn:hover { background: var(--accent-light); color: var(--accent); }
+        .nav-dash-btn.active { background: var(--accent-light); color: var(--accent); }
+
+        .nav-about-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 8px;
+            color: var(--text-3); text-decoration: none;
+            transition: var(--ease); flex-shrink: 0;
+        }
+        .nav-about-btn:hover {
+            background: var(--hover); color: var(--accent);
+        }
+
+        .theme-toggle-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 8px;
+            color: var(--text-3); text-decoration: none;
+            transition: var(--ease); flex-shrink: 0;
+            cursor: pointer; border: none; background: none;
+        }
+        .theme-toggle-btn:hover {
+            background: var(--hover); color: #f59e0b;
+        }
+        .theme-toggle-btn .icon-sun { display: none; }
+        .theme-toggle-btn .icon-moon { display: inline; }
+        [data-theme="dark"] .theme-toggle-btn .icon-sun { display: inline; }
+        [data-theme="dark"] .theme-toggle-btn .icon-moon { display: none; }
+
+        /* ===== 三栏内容区 ===== */
+        .content-wrapper {
+            display: flex; gap: 14px; flex: 1; align-items: stretch;
+            min-height: 0;
+        }
+
+        /* ===== 左侧栏 - 分类筛选 ===== */
+        .sidebar-left {
+            width: 200px; flex-shrink: 0;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 14px 0;
+            display: flex; flex-direction: column;
+            gap: 2px;
+            min-height: 300px;
+            animation: fadeInLeft 0.45s 0.05s ease both;
+        }
+
+        .sidebar-title {
+            font-size: 13px; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.8px;
+            padding: 8px 18px 10px;
+        }
+
+        .sidebar-cat {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 18px;
+            font-size: 14px; font-weight: 500;
+            color: var(--text-2); text-decoration: none;
+            transition: var(--ease);
+            border-left: 3px solid transparent;
+            animation: fadeInLeft 0.35s ease both;
+        }
+        .sidebar-cat:nth-child(2) { animation-delay: 0.04s; }
+        .sidebar-cat:nth-child(3) { animation-delay: 0.08s; }
+        .sidebar-cat:nth-child(4) { animation-delay: 0.12s; }
+        .sidebar-cat:nth-child(5) { animation-delay: 0.16s; }
+        .sidebar-cat:nth-child(6) { animation-delay: 0.20s; }
+        .sidebar-cat:nth-child(7) { animation-delay: 0.24s; }
+        .sidebar-cat:hover {
+            background: var(--hover); color: var(--text);
+            transform: translateX(3px);
+        }
+        .sidebar-cat.active {
+            background: var(--accent-light); color: var(--accent);
+            border-left-color: var(--accent);
+            font-weight: 600;
+        }
+        .sidebar-cat .cat-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        }
+        .sidebar-count {
+            margin-left: auto; font-size: 12px; font-weight: 600;
+            color: var(--text-3);
+            background: var(--hover); padding: 1px 7px;
+            border-radius: 10px;
+        }
+        .sidebar-cat.active .sidebar-count {
+            background: rgba(74,108,247,0.12); color: var(--accent);
+        }
+
+        /* ===== 右侧栏 - 数据面板 ===== */
+        .sidebar-right {
+            width: 240px; flex-shrink: 0;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px 14px;
+            display: flex; flex-direction: column;
+            gap: 12px;
+            min-height: 300px;
+            animation: fadeInRight 0.45s 0.05s ease both;
+        }
+
+        .sidebar-right .sr-section-title {
+            font-size: 13px; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: .8px;
+            padding: 0 4px; margin-bottom: 2px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .sr-section-title .svg-icon { color: var(--text-3); }
+
+        /* 概览卡片 */
+        .sr-overview {
+            display: flex; gap: 8px;
+        }
+        .sr-ov-item {
+            flex: 1; text-align: center;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-s);
+            padding: 12px 6px;
+            animation: scaleIn 0.35s ease both;
+            transition: var(--ease);
+        }
+        .sr-ov-item:nth-child(1) { animation-delay: 0.06s; }
+        .sr-ov-item:nth-child(2) { animation-delay: 0.12s; }
+        .sr-ov-item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+        .sr-ov-num {
+            font-size: 22px; font-weight: 700; color: var(--accent);
+            line-height: 1.2; margin-bottom: 2px;
+            animation: softPulse 2.5s 0.8s ease-in-out 1;
+        }
+        .sr-ov-label {
+            font-size: 12px; color: var(--text-3);
+        }
+
+        /* 分类分布条 */
+        .sr-bar-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 2px 4px; border-radius: 6px;
+            transition: var(--ease); cursor: pointer;
+            animation: fadeInUp 0.4s ease both;
+        }
+        .sr-bar-row:nth-child(1) { animation-delay: 0.08s; }
+        .sr-bar-row:nth-child(2) { animation-delay: 0.13s; }
+        .sr-bar-row:nth-child(3) { animation-delay: 0.18s; }
+        .sr-bar-row:nth-child(4) { animation-delay: 0.23s; }
+        .sr-bar-row:nth-child(5) { animation-delay: 0.28s; }
+        .sr-bar-row:hover { background: var(--hover); transform: translateX(2px); }
+        .sr-bar-row .sr-bar-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        }
+        .sr-bar-row .sr-bar-name {
+            font-size: 13px; color: var(--text-2); flex-shrink: 0;
+            width: 55px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sr-bar-track {
+            flex: 1; height: 5px; background: var(--hover);
+            border-radius: 3px; overflow: hidden;
+        }
+        .sr-bar-fill {
+            height: 100%; border-radius: 3px;
+            width: 0%;
+            animation: barFill 0.7s 0.25s cubic-bezier(0.4,0,0.2,1) forwards;
+        }
+        @keyframes barFill {
+            to { width: var(--bar-target); }
+        }
+        .sr-bar-num {
+            font-size: 12px; font-weight: 600; color: var(--text-3);
+            width: 16px; text-align: right; flex-shrink: 0;
+        }
+
+        /* 最近更新 */
+        .sr-recent-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 5px 4px; border-radius: 6px;
+            font-size: 13px; color: var(--text-2);
+            cursor: pointer; transition: var(--ease);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            animation: fadeIn 0.4s ease both;
+        }
+        .sr-recent-item:nth-child(1) { animation-delay: 0.12s; }
+        .sr-recent-item:nth-child(2) { animation-delay: 0.17s; }
+        .sr-recent-item:nth-child(3) { animation-delay: 0.22s; }
+        .sr-recent-item:nth-child(4) { animation-delay: 0.27s; }
+        .sr-recent-item:nth-child(5) { animation-delay: 0.32s; }
+        .sr-recent-item:hover { background: var(--hover); color: var(--text); transform: translateX(2px); }
+        .sr-recent-item .svg-icon { color: var(--text-3); flex-shrink: 0; }
+        .sr-recent-item .sr-rec-cat {
+            font-size: 10px; color: var(--text-3); flex-shrink: 0;
+            margin-left: auto; padding: 1px 5px;
+            background: var(--hover); border-radius: 4px;
+        }
+
+        /* ===== 中间列容器 ===== */
+        .col-main {
+            flex: 1;
+            display: flex; flex-direction: column;
+            gap: 14px;
+            min-width: 0; overflow: hidden;
+        }
+
+        /* ===== 主卡片 ===== */
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden; flex: 1;
+            display: flex; flex-direction: column;
+            min-width: 0; min-height: 300px;
+            animation: scaleIn 0.4s 0.08s ease both;
+        }
+
+        /* ===== 轮播幻灯片 ===== */
+        .carousel-card {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden; flex-shrink: 0;
+            animation: scaleIn 0.4s 0.08s ease both;
+        }
+        .carousel {
+            position: relative; width: 100%; height: 140px;
+            overflow: hidden; flex-shrink: 0;
+            background: var(--surf-1);
+            animation: fadeIn 0.5s 0.1s ease both;
+        }
+        .carousel-track {
+            display: flex; height: 100%;
+            transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
+        }
+        .carousel-slide {
+            min-width: 100%; height: 100%;
+            display: flex; align-items: center; padding: 0 32px;
+            background-size: cover; background-position: center;
+            position: relative; cursor: pointer;
+        }
+        .carousel-slide::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 100%);
+            z-index: 0;
+        }
+        .carousel-content {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .carousel-tag {
+            display: inline-block; width: fit-content;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; padding: 2px 8px;
+            border-radius: 4px; color: #fff;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+        }
+        .carousel-title {
+            font-size: 22px; font-weight: 700; color: #fff;
+            line-height: 1.3; max-width: 600px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        .carousel-sub {
+            font-size: 13.5px; color: rgba(255,255,255,0.8);
+        }
+        .carousel-dots {
+            position: absolute; bottom: 10px; right: 20px;
+            display: flex; gap: 6px; z-index: 2;
+        }
+        .carousel-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            border: none; cursor: pointer; padding: 0;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .carousel-dot.active {
+            background: #fff; transform: scale(1.3);
+        }
+        .carousel-arrows {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            z-index: 2; display: flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(255,255,255,0.15); border: none; cursor: pointer;
+            color: #fff; transition: background 0.2s;
+        }
+        .carousel-arrows:hover { background: rgba(255,255,255,0.3); }
+        .carousel-prev { left: 10px; }
+        .carousel-next { right: 10px; }
+
+        /* ===== 关于页面 ===== */
+        .about-card {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            animation: scaleIn 0.4s 0.08s ease both;
+        }
+
+        .about-hero {
+            display: flex; align-items: center; gap: 18px;
+            padding: 36px 40px 28px;
+            border-bottom: 1px solid var(--border);
+            animation: fadeInUp 0.45s 0.12s ease both;
+        }
+        .about-hero h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .about-hero p { font-size: 15px; color: var(--text-2); }
+
+        .founder-card {
+            display: flex; align-items: center; gap: 32px;
+            padding: 40px 48px;
+            background: var(--accent-light);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            animation: fadeInUp 0.5s 0.18s ease both;
+        }
+        .founder-badge {
+            position: absolute; top: 24px; right: 32px;
+            padding: 5px 16px; border-radius: 20px;
+            background: var(--accent); color: #fff;
+            font-size: 13px; font-weight: 600; letter-spacing: .5px;
+        }
+        .founder-avatar {
+            width: 110px; height: 110px; border-radius: 50%;
+            flex-shrink: 0; overflow: hidden;
+            border: 3px solid var(--accent-light);
+            box-shadow: var(--shadow);
+            background: var(--surf-1);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .founder-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--accent-light);
+        }
+        .founder-info { flex: 1; min-width: 0; }
+        .founder-name { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .founder-role { font-size: 15px; color: var(--accent); font-weight: 500; display: inline-block; margin-bottom: 14px; }
+        .founder-bio { font-size: 15.5px; color: var(--text-2); line-height: 1.8; margin-bottom: 16px; }
+        .founder-links { display: flex; gap: 10px; flex-wrap: wrap; }
+        .member-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 16px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px; font-weight: 500;
+            color: var(--text); text-decoration: none;
+            transition: var(--ease);
+        }
+        .member-link:hover {
+            background: var(--surf-2); border-color: var(--accent); color: var(--accent);
+            box-shadow: var(--shadow);
+        }
+
+        .about-info { padding: 32px 48px; display: flex; flex-direction: column; gap: 16px; }
+        .about-info-title { font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .about-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .about-info-item {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-s); padding: 14px 16px;
+            display: flex; align-items: center; gap: 12px;
+            animation: fadeInUp 0.4s ease both;
+            transition: var(--ease);
+        }
+        .about-info-item:nth-child(1) { animation-delay: 0.22s; }
+        .about-info-item:nth-child(2) { animation-delay: 0.27s; }
+        .about-info-item:nth-child(3) { animation-delay: 0.32s; }
+        .about-info-item:nth-child(4) { animation-delay: 0.37s; }
+        .about-info-item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+        .about-info-item .info-icon {
+            width: 36px; height: 36px;
+            background: var(--accent-light); border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; color: var(--accent);
+        }
+        .about-info-item .info-label { font-size: 12.5px; color: var(--text-3); margin-bottom: 2px; }
+        .about-info-item .info-value { font-size: 14.5px; font-weight: 600; color: var(--text); }
+
+
+        .about-footer {
+            padding: 20px 48px 36px; text-align: center;
+            border-top: 1px solid var(--border); margin-top: auto;
+        }
+        .about-footer p { font-size: 14px; color: var(--text-3); }
+        .about-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+        .about-footer a:hover { text-decoration: underline; }
+
+        /* ===== 加载 / 提示 / 列表 / 预览（同之前） ===== */
+        .loading {
+            flex:1; display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            gap:14px; padding:64px 24px;
+        }
+        .spinner {
+            width:36px; height:36px;
+            border:3px solid var(--accent-light);
+            border-top-color:var(--accent); border-radius:50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { font-size:15px; color:var(--text-2); }
+
+        .tip {
+            flex:1; display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            gap:12px; padding:64px 24px; text-align:center;
+        }
+        .tip .tip-icon { color: var(--text-3); animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        .tip h3 { font-size:18px; font-weight:600; }
+        .tip p { font-size:15px; color:var(--text-2); max-width:400px; line-height:1.7; }
+
+        .explorer { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+        .explorer-header {
+            display:flex; align-items:center;
+            padding:10px 24px;
+            border-bottom:1px solid var(--border);
+            font-size:12px; font-weight:600; color:var(--text-3);
+            text-transform:uppercase; letter-spacing:.5px;
+            flex-shrink:0; user-select:none;
+        }
+        .col-n { flex:1; min-width:0; }
+        .col-d { width:100px; text-align:right; flex-shrink:0; }
+        .col-s { width:80px; text-align:right; flex-shrink:0; }
+
+        .explorer-body { flex:1; overflow-y:auto; overflow-x:hidden; }
+        .explorer-body::-webkit-scrollbar { width:6px; }
+        .explorer-body::-webkit-scrollbar-track { background:var(--surf-1); border-radius:3px; }
+        .explorer-body::-webkit-scrollbar-thumb { background:var(--text-3); border-radius:3px; }
+
+        .group-header {
+            display:flex; align-items:center; gap:8px;
+            padding:10px 24px 6px;
+            font-size:12px; font-weight:700; color:var(--accent);
+            letter-spacing:.8px; text-transform:uppercase;
+            position:sticky; top:0; z-index:2;
+            background:var(--glass);
+            backdrop-filter:blur(12px);
+            border-bottom:1px solid var(--accent-light);
+            user-select:none; cursor:pointer;
+            transition: var(--ease);
+        }
+        .group-header:hover { background: var(--accent-light); }
+        .group-header .g-icon { color: var(--accent); }
+
+        .group-count {
+            font-size:11px; font-weight:600; color:var(--text-3);
+            background: var(--hover); padding:1px 7px;
+            border-radius:10px; margin-left:2px; letter-spacing:0;
+        }
+        .group-toggle {
+            margin-left: auto; display: flex; align-items: center;
+            opacity:0.4; transition: transform 0.25s ease, opacity 0.2s ease;
+        }
+        .group-header:hover .group-toggle { opacity:0.8; }
+        .group-header.collapsed .group-toggle { transform: rotate(-90deg); }
+        .group-body { overflow: hidden; }
+        .group-body.collapsed { display: none; }
+
+        .cat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .cat-dot.c1 { background: #f59e0b; }
+        .cat-dot.c2 { background: #10b981; }
+        .cat-dot.c3 { background: #8b5cf6; }
+        .cat-dot.c4 { background: #6b7280; }
+        .cat-dot.c5 { background: #ef4444; }
+        .cat-dot.c0 { background: #9ca3af; }
+
+        .file-row {
+            display:flex; align-items:center;
+            padding:9px 24px; cursor:pointer;
+            border-bottom:1px solid var(--border);
+            transition: var(--ease);
+            animation: fadeIn 0.35s ease both;
+        }
+        .file-row:hover { background:var(--hover); transform: translateX(4px); }
+        .file-row:active { background:var(--accent-light); transform: scale(0.995); }
+        .file-row.selected { background:var(--accent-light); }
+        .file-row .col-n { display:flex; align-items:center; gap:9px; min-width:0; }
+        .file-ico { color: var(--text-3); flex-shrink:0; }
+        .file-name {
+            font-size:15px; font-weight:500; color:var(--text);
+            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        }
+        .file-row .col-d { font-size:13px; color:var(--text-2); }
+        .file-row .col-s { font-size:13px; color:var(--text-2); }
+
+        .no-result {
+            flex:1; display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            gap:10px; padding:48px 24px; text-align:center;
+        }
+        .no-result p { font-size:14px; color:var(--text-2); }
+
+        .preview { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+        .preview-bar {
+            display:flex; align-items:center; gap:12px;
+            padding:12px 20px; border-bottom:1px solid var(--border);
+            flex-shrink:0;
+        }
+        .back-btn {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:6px 14px;
+            background:var(--surf-1); border:none;
+            border-radius:8px; font-size:14px; font-weight:500;
+            color:var(--text); cursor:pointer;
+            transition:var(--ease); font-family:inherit;
+            white-space:nowrap;
+        }
+        .back-btn:hover { background:var(--input-border); transform: translateX(-2px); }
+        .back-btn:active { transform: scale(0.96); }
+        .back-btn .svg-icon { color:var(--text-2); }
+        .preview-title {
+            font-size:15px; font-weight:600; color:var(--text);
+            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+            display:flex; align-items:center; gap:6px;
+        }
+        .preview-cat {
+            font-size:13px; color:var(--accent); padding:3px 8px;
+            background:var(--accent-light); border-radius:6px;
+            white-space:nowrap; flex-shrink:0;
+        }
+        .preview-body { flex:1; overflow-y:auto; padding:32px 40px; }
+        .preview-body::-webkit-scrollbar { width:8px; }
+        .preview-body::-webkit-scrollbar-track { background:var(--surf-1); border-radius:4px; }
+        .preview-body::-webkit-scrollbar-thumb { background:var(--text-3); border-radius:4px; }
+        .preview-body::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+        /* Markdown 排版 */
+        .md h1 { font-size:29px; font-weight:700; margin:0 0 6px; padding-bottom:8px; border-bottom:2px solid var(--border); }
+        .md h2 { font-size:22px; font-weight:600; margin:26px 0 10px; }
+        .md h3 { font-size:19px; font-weight:600; margin:20px 0 8px; }
+        .md h4 { font-size:16px; font-weight:600; margin:16px 0 6px; }
+        .md p { margin:9px 0; font-size:16px; line-height:1.8; }
+        .md a { color:var(--accent); text-decoration:none; border-bottom:1px solid transparent; transition:var(--ease); }
+        .md a:hover { border-bottom-color:var(--accent); }
+        .md ul,.md ol { margin:9px 0; padding-left:22px; }
+        .md li { margin:3px 0; font-size:16px; line-height:1.7; }
+        .md blockquote { margin:12px 0; padding:10px 16px; border-left:4px solid var(--accent); background:var(--accent-light); border-radius:0 8px 8px 0; color:var(--text-2); font-size:15px; }
+        .md blockquote p { margin:3px 0; }
+        .md code { background:var(--surf-1); padding:2px 5px; border-radius:4px; font-size:14px; font-family:"Cascadia Code","Fira Code","JetBrains Mono",Consolas,monospace; color:#e74c3c; }
+        .md pre { background:#1e293b; border-radius:var(--radius-s); padding:16px 18px; overflow-x:auto; margin:12px 0; }
+        .md pre code { background:none; padding:0; color:#e2e8f0; font-size:14px; line-height:1.7; }
+        .md table { width:100%; border-collapse:collapse; margin:12px 0; font-size:15px; }
+        .md th { background:var(--surf-3); padding:9px 13px; font-weight:600; border-bottom:2px solid var(--border); text-align:left; }
+        .md td { padding:9px 13px; border-bottom:1px solid var(--border); }
+        .md tr:hover td { background:var(--hover); }
+        .md img { max-width:100%; border-radius:8px; margin:8px 0; }
+        .md hr { border:none; border-top:1px solid var(--border); margin:22px 0; }
+        .md strong { font-weight:600; }
+
+        /* ===== 移动端 ===== */
+        @media(max-width:768px){
+            /* 高度链重设：移动端用 min-height，不锁 overflow */
+            body {
+                min-height: 100dvh; min-height: 100vh;
+                padding: 6px 6px;
+            }
+            .app { min-height: calc(100dvh - 12px); min-height: calc(100vh - 12px); gap: 8px; }
+
+            /* 导航栏精简 */
+            .navbar { padding: 0 10px; gap: 4px; }
+            .nav-logo .logo-text { display: none; }
+            .nav-link { padding: 4px 6px; font-size: 12px; }
+            .nav-search input { width: 80px; font-size: 12px; }
+            .nav-search input:focus { width: 100px; }
+            .nav-dash-btn { display: flex; }
+
+            /* 三栏改为纵向，sidebar-right 排在中间 */
+            .content-wrapper {
+                flex-direction: column; gap: 6px;
+            }
+            .sidebar-right {
+                order: 1; width: 100%; display: none;
+                flex-shrink: 0; min-height: auto;
+                flex-direction: column; gap: 8px; padding: 12px 14px;
+            }
+            .sidebar-right.open { display: flex; }
+            .col-main { order: 2; }
+            .sr-overview { flex-direction: row; }
+            .sr-ov-item { flex: 1; }
+
+            /* 左栏：横向分类chip */
+            .sidebar-left {
+                order: 0; width: 100%; flex-shrink: 0;
+                flex-direction: row; flex-wrap: wrap;
+                padding: 8px 10px; gap: 4px; min-height: auto;
+            }
+            .sidebar-left .sidebar-title { display: none; }
+            .sidebar-cat {
+                padding: 5px 10px; font-size: 12px;
+                border-left: none; border-radius: 6px;
+            }
+            .sidebar-cat.active { border-left: none; }
+            .sidebar-count { display: none; }
+
+            /* 中间列：占满剩余高度，内容区独立滚动 */
+            .col-main { flex: 1; min-height: 0; gap: 6px; }
+
+            /* 轮播缩窄 */
+            .carousel { height: 110px; }
+            .carousel-title { font-size: 17px; }
+            .carousel-sub { font-size: 12px; }
+            .carousel-slide { padding: 0 16px; }
+
+            /* 文档列表：隐藏日期/大小列 */
+            .col-d, .col-s { display: none; }
+            .explorer-header .col-d, .explorer-header .col-s { display: none; }
+            .file-row { padding: 10px 14px; }
+            .file-name { font-size: 14px; }
+            .group-header { padding: 8px 14px 5px; font-size: 11px; }
+
+            /* 预览区 */
+            .preview-body { padding: 16px 12px; }
+            .preview-bar { padding: 8px 12px; }
+            .md h1 { font-size: 24px; }
+            .md h2 { font-size: 18px; }
+            .md h3 { font-size: 16px; }
+            .md p, .md li { font-size: 14px; }
+            .md pre code { font-size: 12px; }
+
+            /* 关于页面 */
+            .founder-card { flex-direction: column; text-align: center; padding: 28px 20px; gap: 18px; }
+            .founder-badge { position: static; display: inline-block; margin-bottom: 4px; }
+            .founder-links { justify-content: center; }
+            .founder-name { font-size: 20px; }
+            .about-hero { padding: 24px 20px; flex-direction: column; text-align: center; }
+            .about-info { padding: 20px; }
+            .about-info-grid { grid-template-columns: 1fr; }
+            .about-footer { padding: 16px 20px 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 阿里巴巴 iconfont 风格矢量图标库 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="icon-books" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 10l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </symbol>
+    <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </symbol>
+    <symbol id="icon-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="9" y1="14" x2="15" y2="14"/>
+    </symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    </symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    </symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </symbol>
+    <symbol id="icon-gamepad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/><rect x="2" y="6" width="20" height="12" rx="6"/>
+    </symbol>
+    <symbol id="icon-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </symbol>
+    <symbol id="icon-more" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+    </symbol>
+    <symbol id="icon-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><path d="M9 18h6v4H9z"/>
+    </symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </symbol>
+    <symbol id="icon-people" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+    <symbol id="icon-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5 1a5.07 5.07 0 0 0 0 3.77A5.44 5.44 0 0 0 3.5 8.52c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+    </symbol>
+    <symbol id="icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 4 12 13 2 4"/>
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+    </symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
+</svg>
+
+<div class="app">
+
+    <!-- ===== 顶部导航栏：Logo + 首页/关于 + 搜索 + 关于 ===== -->
+    <nav class="navbar">
+        <a class="nav-logo" href="#" onclick="filterCategory('all'); return false;" title="显示全部文档">
+            <svg class="svg-icon lg c-accent"><use href="#icon-books"/></svg>
+            <span class="logo-text">文档库</span>
+        </a>
+
+        <div class="nav-links">
+            <a class="nav-link active" id="navHome" href="#" onclick="switchView('home'); return false;">
+                <svg class="svg-icon sm"><use href="#icon-home"/></svg>
+                首页
+            </a>
+            <a class="nav-link" id="navAbout" href="#" onclick="switchView('about'); return false;">
+                <svg class="svg-icon sm"><use href="#icon-info"/></svg>
+                关于
+            </a>
+        </div>
+
+        <div class="nav-spacer"></div>
+
+        <div class="nav-search">
+            <span class="ico">
+                <svg class="svg-icon sm"><use href="#icon-search"/></svg>
+            </span>
+            <input type="text" id="searchInput" placeholder="搜索文档... (Ctrl+F)" autocomplete="off">
+        </div>
+
+        <button class="nav-dash-btn" id="dashToggle" title="仪表盘" onclick="toggleDashboard(); return false;">
+            <svg class="svg-icon sm"><use href="#icon-chart"/></svg>
+        </button>
+
+        <a class="nav-about-btn" href="#" onclick="switchView('about'); return false;" title="关于本站">
+            <svg class="svg-icon sm"><use href="#icon-info"/></svg>
+        </a>
+
+        <button class="theme-toggle-btn" id="themeToggle" title="切换明暗主题">
+            <svg class="svg-icon sm icon-sun"><use href="#icon-sun"/></svg>
+            <svg class="svg-icon sm icon-moon"><use href="#icon-moon"/></svg>
+        </button>
+    </nav>
+
+    <!-- ===== 关于页面 ===== -->
+    <div class="about-card" id="viewAbout" style="display:none;">
+        <div class="about-hero">
+            <svg class="svg-icon xl c-accent"><use href="#icon-info"/></svg>
+            <div>
+                <h2>关于本站</h2>
+                <p>了解这个文档库背后的故事</p>
+            </div>
+        </div>
+
+        <div class="founder-card">
+            <div class="founder-badge">站长</div>
+            <div class="founder-avatar">
+                <img src="/Cat_Document_Hub/img/Home.jpg" alt="站长头像" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="avatar-fallback" style="display:none;">
+                    <svg class="svg-icon xxl" style="color:var(--accent);"><use href="#icon-user"/></svg>
+                </div>
+            </div>
+            <div class="founder-info">
+                <h3 class="founder-name">AEjunjun</h3>
+                <span class="founder-role">项目创始人 · 全栈开发 · 内容维护</span>
+                <p class="founder-bio">
+                    热爱开源与技术分享，业余时间维护这个文档库。专注于前端开发、嵌入式系统和各类有趣的技术探索。
+                    如果你觉得这个文档库对你有帮助，欢迎通过 GitHub 联系我 owo
+                </p>
+                <div class="founder-links">
+                    <a href="https://github.com/AEjunjun" target="_blank" class="member-link">
+                        <svg class="svg-icon sm"><use href="#icon-github"/></svg>
+                        GitHub
+                    </a>
+                    <a href="#" class="member-link" onclick="return false;" title="邮箱暂不公开">
+                        <svg class="svg-icon sm"><use href="#icon-mail"/></svg>
+                        联系站长
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="about-info">
+            <h3 class="about-info-title"><svg class="svg-icon sm c-accent"><use href="#icon-info"/></svg> 站点信息</h3>
+            <div class="about-info-grid">
+                <div class="about-info-item">
+                    <div class="info-icon"><svg class="svg-icon sm"><use href="#icon-calendar"/></svg></div>
+                    <div><div class="info-label">成立时间</div><div class="info-value">2024 年</div></div>
+                </div>
+                <div class="about-info-item">
+                    <div class="info-icon"><svg class="svg-icon sm"><use href="#icon-books"/></svg></div>
+                    <div><div class="info-label">文档总数</div><div class="info-value" id="aboutDocCount">--</div></div>
+                </div>
+                <div class="about-info-item">
+                    <div class="info-icon"><svg class="svg-icon sm"><use href="#icon-chart"/></svg></div>
+                    <div><div class="info-label">内容分类</div><div class="info-value" id="aboutCatCount">--</div></div>
+                </div>
+                <div class="about-info-item">
+                    <div class="info-icon"><svg class="svg-icon sm"><use href="#icon-heart"/></svg></div>
+                    <div><div class="info-label">本站理念</div><div class="info-value">开源分享 · 持续更新</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="about-footer">
+            <p>喜欢这个文档库？欢迎在 <a href="https://github.com/AEjunjun" target="_blank">GitHub</a> 上 Star / Fork / 提交 Issue owo</p>
+        </div>
+    </div>
+
+    <!-- ===== 三栏内容区 ===== -->
+    <div class="content-wrapper" id="contentWrapper">
+
+        <!-- 左侧栏：分类筛选 -->
+        <aside class="sidebar-left" id="sidebarLeft">
+            <div class="sidebar-title">分类</div>
+            <a class="sidebar-cat active" data-cat="all" href="#" onclick="filterCategory('all'); return false;">
+                <svg class="svg-icon sm"><use href="#icon-books"/></svg>
+                全部
+                <span class="sidebar-count" id="sideCountAll">--</span>
+            </a>
+            <a class="sidebar-cat" data-cat="Academic" href="#" onclick="filterCategory('Academic'); return false;">
+                <span class="cat-dot c1"></span>
+                学术文档
+                <span class="sidebar-count" id="sideCountAcademic">--</span>
+            </a>
+            <a class="sidebar-cat" data-cat="Game_Information" href="#" onclick="filterCategory('Game_Information'); return false;">
+                <span class="cat-dot c2"></span>
+                游戏资讯
+                <span class="sidebar-count" id="sideCountGame_Information">--</span>
+            </a>
+            <a class="sidebar-cat" data-cat="Github_Project" href="#" onclick="filterCategory('Github_Project'); return false;">
+                <span class="cat-dot c3"></span>
+                GitHub 项目
+                <span class="sidebar-count" id="sideCountGithub_Project">--</span>
+            </a>
+            <a class="sidebar-cat" data-cat="Studio_Documents" href="#" onclick="filterCategory('Studio_Documents'); return false;">
+                <span class="cat-dot c5"></span>
+                工作室文档
+                <span class="sidebar-count" id="sideCountStudio_Documents">--</span>
+            </a>
+            <a class="sidebar-cat" data-cat="Other" href="#" onclick="filterCategory('Other'); return false;">
+                <span class="cat-dot c4"></span>
+                其他
+                <span class="sidebar-count" id="sideCountOther">--</span>
+            </a>
+        </aside>
+
+        <!-- 中间列 -->
+        <div class="col-main" id="colMain">
+            <!-- 轮播幻灯片模块 -->
+            <div class="carousel-card" id="carouselCard">
+                <div class="carousel" id="carousel">
+                    <div class="carousel-track" id="carouselTrack"></div>
+                    <div class="carousel-dots" id="carouselDots"></div>
+                    <button class="carousel-arrows carousel-prev" id="carouselPrev" title="上一张">
+                        <svg class="svg-icon sm"><use href="#icon-arrow-left"/></svg>
+                    </button>
+                    <button class="carousel-arrows carousel-next" id="carouselNext" title="下一张">
+                        <svg class="svg-icon sm" style="transform:rotate(180deg);"><use href="#icon-arrow-left"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 文档列表 & 预览模块 -->
+            <div class="card" id="card">
+
+            <div class="loading" id="viewLoading">
+                <div class="spinner"></div>
+                <p>正在加载文档列表...</p>
+            </div>
+
+            <div class="tip" id="viewError" style="display:none;">
+                <div class="tip-icon"><svg class="svg-icon xxl"><use href="#icon-alert"/></svg></div>
+                <h3>无法加载文档列表</h3>
+                <p id="errorMsg"></p>
+            </div>
+
+            <div class="tip" id="viewEmpty" style="display:none;">
+                <div class="tip-icon"><svg class="svg-icon xxl"><use href="#icon-folder-open"/></svg></div>
+                <h3>暂无文档</h3>
+                <p>md/ 文件夹中还没有 .md 文件，请添加后重新生成 files.json</p>
+            </div>
+
+            <div class="explorer" id="viewList" style="display:none;">
+                <div class="explorer-header">
+                    <span class="col-n">名称</span>
+                    <span class="col-d">修改日期</span>
+                    <span class="col-s">大小</span>
+                </div>
+                <div class="explorer-body" id="listBody"></div>
+                <div class="no-result" id="noResult" style="display:none;">
+                    <svg class="svg-icon xl" style="color:var(--text-3);"><use href="#icon-search"/></svg>
+                    <p>没有匹配的文档</p>
+                </div>
+            </div>
+
+            <div class="preview" id="viewPreview" style="display:none;">
+                <div class="preview-bar">
+                    <button class="back-btn" id="backBtn">
+                        <svg class="svg-icon sm"><use href="#icon-arrow-left"/></svg>
+                        返回
+                    </button>
+                    <span class="preview-title" id="previewTitle"></span>
+                    <span class="preview-cat" id="previewCat"></span>
+                </div>
+                <div class="preview-body">
+                    <div class="md" id="mdContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- 右侧栏：动态数据面板 -->
+        <aside class="sidebar-right" id="sidebarRight">
+            <!-- 概览 -->
+            <div class="sr-section-title"><svg class="svg-icon sm"><use href="#icon-chart"/></svg> 概览</div>
+            <div class="sr-overview">
+                <div class="sr-ov-item">
+                    <div class="sr-ov-num" id="srOvDocs">--</div>
+                    <div class="sr-ov-label">篇文档</div>
+                </div>
+                <div class="sr-ov-item">
+                    <div class="sr-ov-num" id="srOvCats">--</div>
+                    <div class="sr-ov-label">个分类</div>
+                </div>
+            </div>
+
+            <!-- 分类分布 -->
+            <div class="sr-section-title"><svg class="svg-icon sm"><use href="#icon-chart"/></svg> 分布</div>
+            <div id="srBars"></div>
+
+            <!-- 最近文档 -->
+            <div class="sr-section-title" style="margin-top:4px;"><svg class="svg-icon sm"><use href="#icon-clock"/></svg> 最近</div>
+            <div id="srRecent"></div>
+        </aside>
+
+    </div>
+</div>
+
+<script>
+(function () {
+    // ========== DOM ==========
+    const searchInput  = document.getElementById('searchInput');
+    const viewLoading  = document.getElementById('viewLoading');
+    const viewError    = document.getElementById('viewError');
+    const viewEmpty    = document.getElementById('viewEmpty');
+    const viewList     = document.getElementById('viewList');
+    const viewAbout    = document.getElementById('viewAbout');
+    const viewPreview  = document.getElementById('viewPreview');
+    const listBody     = document.getElementById('listBody');
+    const noResult     = document.getElementById('noResult');
+    const backBtn      = document.getElementById('backBtn');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewCat   = document.getElementById('previewCat');
+    const mdContent    = document.getElementById('mdContent');
+    const card         = document.getElementById('card');
+    const carouselCard = document.getElementById('carouselCard');
+    const dashToggle   = document.getElementById('dashToggle');
+    const contentWp    = document.getElementById('contentWrapper');
+    const sidebarLeft  = document.getElementById('sidebarLeft');
+    const sidebarRight = document.getElementById('sidebarRight');
+    const navHome      = document.getElementById('navHome');
+    const navAbout     = document.getElementById('navAbout');
+    const aboutDocCount = document.getElementById('aboutDocCount');
+    const aboutCatCount = document.getElementById('aboutCatCount');
+    const srOvDocs     = document.getElementById('srOvDocs');
+    const srOvCats     = document.getElementById('srOvCats');
+    const srBars       = document.getElementById('srBars');
+    const srRecent     = document.getElementById('srRecent');
+
+    // ========== SVG 图标快捷方法 ==========
+    function icon(id, size, color) {
+        var c = color ? ' style="color:' + color + '"' : '';
+        return '<svg class="svg-icon ' + (size || 'sm') + '"' + c + '><use href="#' + id + '"/></svg>';
+    }
+
+    // ========== 状态 ==========
+    let allFiles  = [];
+    let curView   = 'loading';
+    let curNav    = 'home';
+    let curFilter = 'all';
+
+    // ========== marked 配置 ==========
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({ breaks: true, gfm: true });
+    }
+
+    // ========== 视图切换 ==========
+    function showView(name) {
+        curView = name;
+        viewLoading.style.display = 'none';
+        viewError.style.display   = 'none';
+        viewEmpty.style.display   = 'none';
+        viewList.style.display    = 'none';
+        viewPreview.style.display = 'none';
+        if (name === 'loading')  viewLoading.style.display  = 'flex';
+        if (name === 'error')    viewError.style.display    = 'flex';
+        if (name === 'empty')    viewEmpty.style.display    = 'flex';
+        if (name === 'list')     viewList.style.display     = 'flex';
+        if (name === 'preview')  viewPreview.style.display = 'flex';
+    }
+
+    // 视图切换
+    function switchView(page) {
+        if (page === 'home') {
+            curNav = 'home';
+            navHome.classList.add('active');
+            navAbout.classList.remove('active');
+            viewAbout.style.display = 'none';
+            contentWp.style.display = 'flex';
+            card.style.display = 'flex';
+            if (allFiles.length === 0) {
+                loadFileList();
+            } else {
+                showView('list');
+                searchInput.focus();
+            }
+        } else if (page === 'about') {
+            curNav = 'about';
+            navAbout.classList.add('active');
+            navHome.classList.remove('active');
+            contentWp.style.display = 'none';
+            viewAbout.style.display = 'flex';
+            if (aboutDocCount && allFiles.length > 0) {
+                aboutDocCount.textContent = allFiles.length + ' 篇';
+                var c = 0;
+                catOrder.forEach(function(cc) { if ((allFiles.filter(function(f){return (f.category||'Other')===cc;})).length > 0) c++; });
+                if (aboutCatCount) aboutCatCount.textContent = c + ' 个';
+            }
+        }
+    }
+    window.switchView = switchView;
+
+    // 仪表盘切换（移动端）
+    function toggleDashboard() {
+        sidebarRight.classList.toggle('open');
+        dashToggle.classList.toggle('active');
+    }
+    window.toggleDashboard = toggleDashboard;
+
+    // ========== 分类筛选 ==========
+    function filterCategory(cat) {
+        curFilter = cat;
+        // 高亮左侧栏分类按钮
+        document.querySelectorAll('.sidebar-cat').forEach(function(el) {
+            el.classList.toggle('active', el.getAttribute('data-cat') === cat);
+        });
+
+        searchInput.value = '';
+
+        if (cat === 'all') {
+            renderList(allFiles);
+        } else {
+            var filtered = allFiles.filter(function(f) {
+                return (f.category || 'Other') === cat;
+            });
+            renderList(filtered);
+        }
+    }
+    window.filterCategory = filterCategory;
+
+    // ========== 更新侧边栏计数 + 右侧面板 ==========
+    var catOrder = ['Academic','Game_Information','Github_Project','Studio_Documents','Other'];
+    var catColors = {
+        'Academic':          '#f59e0b',
+        'Game_Information': '#10b981',
+        'Github_Project':   '#8b5cf6',
+        'Studio_Documents': '#ef4444',
+        'Other':            '#6b7280'
+    };
+
+    function updateSideCounts() {
+        var counts = {};
+        var total = allFiles.length;
+        allFiles.forEach(function(f) {
+            var c = f.category || 'Other';
+            counts[c] = (counts[c] || 0) + 1;
+        });
+
+        // 左侧栏计数
+        var allEl = document.getElementById('sideCountAll');
+        if (allEl) allEl.textContent = total;
+
+        catOrder.forEach(function(c) {
+            var el = document.getElementById('sideCount' + c);
+            if (el) el.textContent = counts[c] || 0;
+        });
+
+        // === 右侧面板 ===
+        var catCount = 0;
+        catOrder.forEach(function(c) { if (counts[c]) catCount++; });
+
+        // 概览数字
+        if (srOvDocs) srOvDocs.textContent = total;
+        if (srOvCats) srOvCats.textContent = catCount;
+        if (aboutDocCount) aboutDocCount.textContent = total + ' 篇';
+        if (aboutCatCount) aboutCatCount.textContent = catCount + ' 个';
+
+        // 分类分布条
+        if (srBars) {
+            var maxCount = Math.max.apply(null, Object.values(counts).concat([1]));
+            var html = '';
+            catOrder.forEach(function(c) {
+                var n = counts[c] || 0;
+                if (n === 0) return;
+                var pct = Math.round(n / maxCount * 100);
+                html +=
+                    '<div class="sr-bar-row" data-cat="' + c + '" onclick="filterCategory(\'' + c + '\')" title="' + getCatLabel(c) + ': ' + n + ' 篇">' +
+                        '<span class="sr-bar-dot" style="background:' + catColors[c] + '"></span>' +
+                        '<span class="sr-bar-name">' + getCatLabel(c) + '</span>' +
+                        '<span class="sr-bar-track"><span class="sr-bar-fill" style="--bar-target:' + pct + '%;background:' + catColors[c] + '"></span></span>' +
+                        '<span class="sr-bar-num">' + n + '</span>' +
+                    '</div>';
+            });
+            srBars.innerHTML = html;
+        }
+
+        // 最近文档（取前5条）
+        if (srRecent) {
+            var recent = allFiles.slice(0, 5);
+            var html2 = '';
+            recent.forEach(function(item) {
+                html2 +=
+                    '<div class="sr-recent-item" onclick="openFileByName(\'' + escAttr(item.name) + '\',\'' + escAttr(item.path) + '\',\'' + escAttr(item.category || 'Other') + '\')" title="' + escAttr(item.name) + '">' +
+                        '<svg class="svg-icon sm"><use href="#icon-file"/></svg>' +
+                        '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">' + esc(item.name) + '</span>' +
+                        '<span class="sr-rec-cat">' + getCatLabel(item.category) + '</span>' +
+                    '</div>';
+            });
+            if (recent.length === 0) {
+                html2 = '<div style="font-size:11px;color:var(--text-3);padding:4px;">暂无文档</div>';
+            }
+            srRecent.innerHTML = html2;
+        }
+    }
+
+    function escAttr(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // 右侧栏"最近"点击打开文件
+    function openFileByName(name, path, category) {
+        var item = allFiles.find(function(f) { return f.name === name && f.path === path; });
+        if (item) {
+            openFile(item);
+        } else {
+            // fallback
+            openFile({ name: name, path: path, category: category });
+        }
+    }
+    window.openFileByName = openFileByName;
+
+    // ========== 工具 ==========
+    function esc(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+    function fmtSize(b) {
+        if (!b && b !== 0) return '';
+        if (b === 0) return '0 B';
+        var u = ['B','KB','MB','GB'];
+        var i = Math.floor(Math.log(b) / Math.log(1024));
+        return (b / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+    }
+
+    var catMeta = {
+        'Academic':          { label: '学术文档',  ico: '#icon-book',     dot: 'c1' },
+        'Game_Information':  { label: '游戏资讯',  ico: '#icon-gamepad',  dot: 'c2' },
+        'Github_Project':    { label: 'GitHub 项目',ico: '#icon-code',     dot: 'c3' },
+        'Other':             { label: '其他',       ico: '#icon-more',     dot: 'c4' },
+        'Studio_Documents':  { label: '工作室文档', ico: '#icon-building', dot: 'c5' },
+    };
+
+    function getCatLabel(cat) {
+        var m = catMeta[cat];
+        if (m) return m.label;
+        return cat.replace(/_/g, ' ');
+    }
+    function getCatIcon(cat) {
+        var m = catMeta[cat];
+        if (m) return m.ico;
+        return '#icon-folder';
+    }
+    function getCatDot(cat) {
+        var m = catMeta[cat];
+        return m ? m.dot : 'c0';
+    }
+
+    // ========== 加载 files.json ==========
+    async function loadFileList() {
+        showView('loading');
+        try {
+            var res = await fetch('/Cat_Document_Hub/files.json?_=' + Date.now());
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' - 未找到 files.json');
+            var data = await res.json();
+
+            if (!Array.isArray(data) || data.length === 0) {
+                showView('empty');
+                return;
+            }
+
+            allFiles = data;
+            updateSideCounts();
+            renderList(allFiles);
+            showView('list');
+            searchInput.focus();
+        } catch (e) {
+            document.getElementById('errorMsg').textContent =
+                e.message + '。请确保 files.json 存在于网站根目录。';
+            showView('error');
+        }
+    }
+
+    // ========== 渲染列表 ==========
+    function renderList(files) {
+        listBody.innerHTML = '';
+        noResult.style.display = 'none';
+
+        if (files.length === 0) {
+            noResult.style.display = 'flex';
+            return;
+        }
+
+        var groups = {};
+        files.forEach(function(f) {
+            var c = f.category || 'Other';
+            if (!groups[c]) groups[c] = [];
+            groups[c].push(f);
+        });
+
+        var sorted = Object.entries(groups).sort(function(a, b) {
+            if (a[0] === 'Other') return 1;
+            if (b[0] === 'Other') return -1;
+            return 0;
+        });
+
+        sorted.forEach(function(entry) {
+            var cat = entry[0], items = entry[1];
+
+            var gh = document.createElement('div');
+            gh.className = 'group-header';
+            gh.setAttribute('data-cat', cat);
+            var dotCls = getCatDot(cat);
+            var icoId  = getCatIcon(cat).replace('#','');
+            gh.innerHTML = '<span class="cat-dot ' + dotCls + '"></span>' +
+                '<svg class="svg-icon sm g-icon"><use href="#' + icoId + '"/></svg>' +
+                ' ' + getCatLabel(cat) +
+                '<span class="group-count">' + items.length + '</span>' +
+                '<span class="group-toggle"><svg class="svg-icon sm"><use href="#icon-chevron-down"/></svg></span>';
+
+            gh.addEventListener('click', function() {
+                var body = this.nextElementSibling;
+                if (body && body.classList.contains('group-body')) {
+                    this.classList.toggle('collapsed');
+                    body.classList.toggle('collapsed');
+                }
+            });
+
+            listBody.appendChild(gh);
+
+            var gb = document.createElement('div');
+            gb.className = 'group-body';
+
+            items.forEach(function(item) {
+                var row = document.createElement('div');
+                row.className = 'file-row';
+                row.title = item.path;
+
+                var catText = getCatLabel(cat);
+
+                row.innerHTML =
+                    '<div class="col-n">' +
+                        icon('icon-file', 'md') +
+                        '<span class="file-name">' + esc(item.name) + '</span>' +
+                    '</div>' +
+                    '<div class="col-d" style="font-size:12px;color:var(--text-3);">' +
+                        esc(catText) +
+                    '</div>' +
+                    '<div class="col-s">' + (item.size ? fmtSize(item.size) : '-') + '</div>';
+
+                row.addEventListener('click', function() { openFile(item); });
+                gb.appendChild(row);
+            });
+
+            listBody.appendChild(gb);
+        });
+    }
+
+    // ========== 搜索 ==========
+    searchInput.addEventListener('input', function() {
+        if (curView !== 'list') return;
+        var q = searchInput.value.toLowerCase().trim();
+        if (!q) { filterCategory(curFilter); return; }
+        var f = allFiles.filter(function(item) {
+            return item.name.toLowerCase().indexOf(q) !== -1 ||
+                   (item.category || '').toLowerCase().indexOf(q) !== -1;
+        });
+        renderList(f);
+    });
+
+    // ========== 打开文件 ==========
+    async function openFile(item) {
+        showView('preview');
+        carouselCard.style.display = 'none';
+        sidebarRight.classList.remove('open');
+        dashToggle.classList.remove('active');
+        previewTitle.innerHTML = icon('icon-file', 'sm') + ' ' + esc(item.name);
+        previewCat.textContent = getCatLabel(item.category) || '其他';
+        mdContent.innerHTML = '<div style="color:var(--text-2);font-size:14px;padding:24px 0;">加载中...</div>';
+        viewPreview.querySelector('.preview-body').scrollTop = 0;
+
+        try {
+            var res = await fetch('/Cat_Document_Hub/md/' + encodeURI(item.path) + '?_=' + Date.now());
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var text = await res.text();
+            if (typeof marked !== 'undefined') {
+                mdContent.innerHTML = marked.parse(text);
+            } else {
+                mdContent.innerHTML = '<pre>' + esc(text) + '</pre>';
+            }
+            mdContent.querySelectorAll('pre code').forEach(function(block) {
+                if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+            });
+        } catch (e) {
+            mdContent.innerHTML = '<p style="color:#e74c3c;display:flex;align-items:center;gap:6px;">' +
+                icon('icon-alert', 'sm', '#e74c3c') + ' 加载失败：' + esc(e.message) + '</p>';
+        }
+    }
+
+    // ========== 返回 ==========
+    backBtn.addEventListener('click', function() {
+        showView('list');
+        carouselCard.style.display = '';
+        setTimeout(function() { searchInput.focus(); }, 50);
+    });
+
+    // ========== 键盘 ==========
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (curNav === 'home' && curView === 'list') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+        if (e.key === 'Escape') {
+            if (curView === 'preview') backBtn.click();
+            else if (curView === 'list')  { searchInput.value = ''; filterCategory(curFilter); }
+            else if (curNav === 'about') switchView('home');
+        }
+    });
+
+    // ========== 明暗主题切换 ==========
+    (function initTheme() {
+        var saved = localStorage.getItem('theme');
+        if (saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else if (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        // 延迟启用过渡动画，避免首次加载闪烁
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                document.documentElement.classList.add('theme-ready');
+            });
+        });
+    })();
+
+    document.getElementById('themeToggle').addEventListener('click', function() {
+        var current = document.documentElement.getAttribute('data-theme');
+        if (current === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        }
+    });
+
+    // ========== 轮播幻灯片 ==========
+    (function initCarousel() {
+        var slides = [
+            {
+                tag: '壁纸',
+                title: '俊俊的桌面壁纸',
+                sub: '个人桌面 - 日常使用',
+                img: '/Cat_Document_Hub/img/A_Img/俊俊的桌面壁纸.png',
+                bg: 'linear-gradient(135deg, #4a6cf7 0%, #7c5cfc 50%, #a855f7 100%)'
+            },
+            {
+                tag: '壁纸',
+                title: '丁达尔 · 光影效果',
+                sub: '哲风壁纸 - 自然光影',
+                img: '/Cat_Document_Hub/img/A_Img/【哲风壁纸】丁达尔-光影效果.png',
+                bg: 'linear-gradient(135deg, #10b981 0%, #0ea5e9 50%, #6366f1 100%)'
+            },
+            {
+                tag: '壁纸',
+                title: '乡村 · 原野 · 小溪',
+                sub: '哲风壁纸 - 田园风光',
+                img: '/Cat_Document_Hub/img/A_Img/【哲风壁纸】乡村-原野-小溪.png',
+                bg: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%)'
+            },
+            {
+                tag: '壁纸',
+                title: '云彩 · 夜晚 · 夜景',
+                sub: '哲风壁纸 - 夜空云层',
+                img: '/Cat_Document_Hub/img/A_Img/【哲风壁纸】云彩-夜晚-夜景.png',
+                bg: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
+            }
+        ];
+
+        var track = document.getElementById('carouselTrack');
+        var dots = document.getElementById('carouselDots');
+        var current = 0;
+        var timer = null;
+        var interval = 4000; // 4 秒切换
+
+        function buildSlides() {
+            track.innerHTML = '';
+            dots.innerHTML = '';
+            slides.forEach(function(s, i) {
+                var slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+                if (s.img) {
+                    slide.style.backgroundImage = 'url(' + s.img + ')';
+                } else {
+                    slide.style.background = s.bg;
+                }
+                slide.innerHTML =
+                    '<div class="carousel-content">' +
+                        '<span class="carousel-tag">' + s.tag + '</span>' +
+                        '<div class="carousel-title">' + s.title + '</div>' +
+                        '<div class="carousel-sub">' + s.sub + '</div>' +
+                    '</div>';
+                slide.addEventListener('click', function() {
+                    if (s.action === 'search') searchInput.focus();
+                });
+                track.appendChild(slide);
+
+                var dot = document.createElement('button');
+                dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+                dot.setAttribute('aria-label', '切换到第' + (i + 1) + '张');
+                dot.addEventListener('click', (function(idx) {
+                    return function() { goToSlide(idx); };
+                })(i));
+                dots.appendChild(dot);
+            });
+        }
+
+        function goToSlide(index) {
+            current = index;
+            track.style.transform = 'translateX(-' + (index * 100) + '%)';
+            var allDots = dots.querySelectorAll('.carousel-dot');
+            allDots.forEach(function(d, i) { d.classList.toggle('active', i === index); });
+            resetTimer();
+        }
+
+        function nextSlide() {
+            goToSlide((current + 1) % slides.length);
+        }
+
+        function prevSlide() {
+            goToSlide((current - 1 + slides.length) % slides.length);
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            timer = setInterval(nextSlide, interval);
+        }
+
+        document.getElementById('carouselPrev').addEventListener('click', function(e) {
+            e.stopPropagation(); prevSlide();
+        });
+        document.getElementById('carouselNext').addEventListener('click', function(e) {
+            e.stopPropagation(); nextSlide();
+        });
+
+        buildSlides();
+        timer = setInterval(nextSlide, interval);
+    })();
+
+    // ========== 启动 ==========
+    switchView('home');
+    loadFileList();
+})();
+</script>
+</body>
+</html>
