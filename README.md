@@ -178,16 +178,27 @@ var slides = [
 
 ## License
 
-本项目采用 MIT 开源协议，允许自由使用、修改和分发。
+本项目采用 **GPLv3.0** 开源协议发布。
+
+GPLv3.0 是一款强Copyleft协议，核心要求：
+- 任何人可以免费使用、修改、分发本项目的代码
+- **任何基于本项目修改或集成的衍生项目，必须以同样的 GPLv3.0 协议开源**
+- 修改过的文件必须标明变更说明
+- 必须保留原作者的版权声明
 
 ```
-MIT License
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
 
-Copyright (c) 2024 AEjunjun
+Copyright (C) 2024 AEjunjun
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files...
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 ```
+
+完整协议文本请参阅项目根目录下的 `LICENSE` 文件。
 
 ---
 
